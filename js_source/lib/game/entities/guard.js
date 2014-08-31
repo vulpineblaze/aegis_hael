@@ -2,12 +2,15 @@ ig.module(
   'game.entities.guard'
 )
 .requires(
-  'impact.entity'
+  'impact.entity',
+  'game.imageblender'
 )
 .defines(function(){
   EntityGuard = ig.Entity.extend({
     animSheet: new ig.AnimationSheet( 'media/null_guard.png', 18, 18 ),
     size: {x: 8, y:14},
+
+    centerPos: {x:0,y:0},
     offset: {x: 4, y: 2},
     maxVel: {x: 100, y: 100},
     flip: false,
@@ -15,15 +18,26 @@ ig.module(
     
     friction: {x: 150, y: 150},
     speed: 16,
+
+    health:10,
+    maxHealth:10,
     
     spawnerTimer:null,
     spawnerDelay:1,
     
     type: ig.Entity.TYPE.B,
-    checkAgainst: ig.Entity.TYPE.A,
+    checkAgainst: ig.Entity.TYPE.BOTH,
     collides: ig.Entity.COLLIDES.PASSIVE,
 
     faction:0,
+
+    targetObj: 0,
+
+    fireDistance: 30,
+    fireSpeed:6,
+    fireTimer:null,
+
+    line:null,
     
     
     
@@ -32,13 +46,19 @@ ig.module(
       this.addAnim('walk', 0.01, [0,1,2,3,4,5]);
       this.parent( x, y, settings );
 
+      this.centerPos.x = this.pos.x+this.size.x/2;
+      this.centerPos.y = this.pos.y+this.size.y/2;
 
       this.vel.x = ig.game.randomNumGen(this.speed-2,this.speed+6);
       this.vel.y = ig.game.randomNumGen(this.speed-2,this.speed+6);
     },
 
     update: function() {
-    
+      var modifiedSpeed = this.speed;
+      if(this.line){
+        modifiedSpeed = this.speed/2;
+      }
+
       if( !(this.spawnerTimer==null) && this.spawnerTimer.delta() > this.spawnerDelay ) {
         //this.invincible = false;
         //this.currentAnim.alpha = 1;
@@ -74,13 +94,23 @@ ig.module(
       }else{
         var xdir = 1;
       }
-      this.vel.x += (xdir*this.speed - this.vel.x)*0.9;
-      this.vel.y += (this.speed - this.vel.y)*0.9;
+      
       // this.vel.x = this.speed * xdir;
       // this.vel.x = (xdir*this.speed,3+Math.pow(this.vel.x))/4;
       // this.vel.y = (this.speed,3+Math.pow(this.vel.y))/4;
       this.currentAnim.flip.x = this.flip;
+
+      if(this.targetObj){
+        this.hasTargetWillRun(modifiedSpeed);
+      }else{
+        this.targetAndRunTowards(modifiedSpeed);
+        this.vel.x += (xdir*modifiedSpeed - this.vel.x)*0.9;
+        this.vel.y += (modifiedSpeed - this.vel.y)*0.9;
+      }
       this.parent();
+
+      this.centerPos.x = this.pos.x+this.size.x/2;
+      this.centerPos.y = this.pos.y+this.size.y/2;
     },
     
     
@@ -93,7 +123,9 @@ ig.module(
     },
     
     check: function( other ) {
-      other.receiveDamage( 6, this );
+      if(other.faction != this.faction){
+        other.receiveDamage( 6, this );
+      }
 
       // this.vel.x += (this.pos.x - other.pos.x)*0.2;
       // this.vel.y += (this.pos.y - other.pos.y)*0.2;
@@ -105,17 +137,70 @@ ig.module(
     
     receiveDamage: function(value){
       this.parent(value);
-      if(this.health > 0)
+      if(this.health > 0){
         ig.game.spawnEntity(EntityDamageExplosion, this.pos.x, this.pos.y, {particles: 2, colorOffset: 1,checkAgainst: ig.Entity.TYPE.A});
+      }
     },
     
     kill: function(){
+      
       this.parent();
       ig.game.spawnEntity(EntityDamageExplosion, this.pos.x, this.pos.y, {colorOffset: 1,checkAgainst: ig.Entity.TYPE.A});
       ig.game.stats.kills++;
-    }
+    },
+
+    targetAndRunTowards: function(modifiedSpeed){
+      var targetTowerList = ig.game.getEntitiesByType( EntityTower );
+      var targetGuardList = ig.game.getEntitiesByType( EntityGuard );
+      var goodTarget = null;
+      for(var index = 0;index<targetTowerList.length;index++){
+        if(goodTarget){break;}
+        var possibleTarget = targetTowerList[index];
+        if(possibleTarget.faction != this.faction && this.distanceTo( possibleTarget ) < this.fireDistance){
+          goodTarget = possibleTarget;
+        }
+      }
+
+      for(var index = 0;index<targetGuardList.length;index++){
+        if(goodTarget){break;}
+        var possibleTarget = targetGuardList[index];
+        if(possibleTarget.faction != this.faction && this.distanceTo( possibleTarget ) < this.fireDistance){
+          this.goodTarget = possibleTarget;
+        }
+
+
+      }
+
+      for(var index = 0;index<targetTowerList.length;index++){
+        if(goodTarget){break;}
+        var possibleTarget = targetTowerList[index];
+        if(possibleTarget.faction != this.faction){
+          goodTarget = possibleTarget;
+        }
+      }
+
+      if(goodTarget){
+        this.targetObj = goodTarget;
+        this.hasTargetWillRun(modifiedSpeed);
+      }
+      
+      
+    },//endof targetandruntowards
+
+    hasTargetWillRun: function(modifiedSpeed){
+      var targetAngle = this.angleTo( this.targetObj );
+        
+      var angx = Math.cos(targetAngle);
+      var angy = Math.sin(targetAngle);
+
+      this.pos.x += angx*(modifiedSpeed/20);
+      this.pos.y += angy*(modifiedSpeed/20);
+
+
+    },
     
-  });
+  }); //endof guard
+
 
   EntityTurret = ig.Entity.extend({
     size: {x: 29, y: 37},
@@ -225,22 +310,59 @@ ig.module(
   
   
   EntityMouseBullet = ig.Entity.extend({
-    size: {x: 5, y: 3},
-    animSheet: new ig.AnimationSheet( 'media/bullet.png', 5, 3 ),
+    // size: {x: 5, y: 3},
+    animSheet: new ig.AnimationSheet( 'media/big_bullet.png#995522', 12, 12 ),
+    scale: 0.1,
+    offset:{x:0,y:0},
+    faction:0,
+
     maxVel: {x: 0, y: 0},
     type: ig.Entity.TYPE.NONE,
-    checkAgainst: ig.Entity.TYPE.B,
+    checkAgainst: ig.Entity.TYPE.BOTH,
     collides: ig.Entity.COLLIDES.PASSIVE,
     
     desiredVel: 300,
+    lifetime: null,
+
+    damage:1,
     
     
     init: function( x, y, settings ) {
     
-      //this.angle++;
-      // ig.log( 'angle', settings.angle );
-      //settings.angle = settings.angle/1000; // //
+      if(settings.faction){
+        this.faction = settings.faction;
+      }
+
+      if(settings.animSheet && settings.color){
+        this.animSheet = new ig.AnimationSheet( 
+                                settings.animSheet.sheet+settings.color, 
+                                settings.animSheet.x, 
+                                settings.animSheet.y );
+      }else if(settings.color){
+        this.animSheet = new ig.AnimationSheet( 'media/big_bullet.png'+settings.color, 12, 12 );
+      }else if(settings.animSheet){
+        this.animSheet = new ig.AnimationSheet( 
+                                settings.animSheet.sheet, 
+                                settings.animSheet.x, 
+                                settings.animSheet.y );
+      }
+
+      if(settings.lifetime){
+        this.lifetime = settings.lifetime;
+      }
+
+      if(settings.damage){
+        this.damage = settings.damage;
+      }
+
+      if(settings.desiredVel){
+        this.desiredVel = settings.desiredVel;
+      }
+
       
+
+      this.idleTimer = new ig.Timer();
+
       this.maxVel.x = this.maxVel.y = this.desiredVel;
       
       var vely = Math.sin(settings.angle) * this.desiredVel; //.desiredVel is just the velocity I would want if we were going in a straight line directly out of the right of the player. I just put it as a property of the entity since I refer to it in multiple locations
@@ -259,14 +381,30 @@ ig.module(
       //this.maxVel.y = this.vel.y = this.accel.y = vely;
     
     
-      this.parent( x  , y+8, settings );
+      this.parent( x  , y, settings );
       this.vel.x = this.accel.x = velx;
       this.vel.y = this.accel.y = vely;
       
       this.addAnim( 'idle', 0.2, [0] );
     },
     
-    
+    update: function(){
+      if( this.lifetime && this.idleTimer.delta() > this.lifetime ) {
+        this.kill();
+      }
+      this.parent();
+    },
+    // draw: function () {
+    //   var ctx = ig.system.context;
+    //   ctx.save();
+    //   ctx.translate( ig.system.getDrawPos( this.pos.x - this.offset.x - ig.game.screen.x ),
+    //     ig.system.getDrawPos( this.pos.y - this.offset.y - ig.game.screen.y ) );
+    //   ctx.scale( this.scale, this.scale );
+    //   this.currentAnim.draw( 0, 0 );
+    //   ctx.restore();
+
+    //   this.parent();
+    // },
     
     handleMovementTrace: function( res ) {
       this.parent( res );
@@ -276,9 +414,12 @@ ig.module(
     },
 
     check: function( other ) {
-      other.receiveDamage( 1, this );
-      other.vel.x += this.vel.x/10;
-      other.vel.y += this.vel.y/10;
+      if(other.faction != this.faction){
+        other.receiveDamage( this.damage, this );
+        other.vel.x += this.damage * this.vel.x/10;
+        other.vel.y += this.damage * this.vel.y/10;
+      }
+      
       this.kill();
     },
     kill: function(){
@@ -289,6 +430,97 @@ ig.module(
     },
     
   });   //end of bullet
+
+
+  EntityAOECircle = ig.Entity.extend({
+    // size: {x: 5, y: 3},
+    // animSheet: new ig.AnimationSheet( 'media/big_bullet.png#995522', 12, 12 ),
+    scale: 0.1,
+    offset:{x:0,y:0},
+
+    faction:0,
+    radius:17,
+    maxRadius:50,
+
+    damage:6,
+
+    type: ig.Entity.TYPE.NONE,
+    checkAgainst: ig.Entity.TYPE.BOTH,
+    collides: ig.Entity.COLLIDES.PASSIVE,
+    
+
+    
+    init: function( x, y, settings ) {
+    
+      this.faction = settings.faction; 
+      this.parent( x  , y, settings );
+
+    },
+
+    update: function(){
+      this.radius += 1;
+
+      this.size.x += 1;
+      this.size.y += 1;
+      this.width += 1;
+      this.height += 1;
+
+      if(this.radius > this.maxRadius){
+        this.kill();
+      }
+      this.parent();
+    },
+      
+    draw: function(){
+      var AOEColor = "rgba(196,0,245,0.5)";
+      // var AOERadius = 17;
+
+      var offset = 0;
+      var startX = ig.system.getDrawPos(this.pos.x - ig.game.screen.x + offset);
+      var startY = ig.system.getDrawPos(this.pos.y - ig.game.screen.y + offset);
+
+      var ctx = ig.system.context;
+            
+      ctx.strokeStyle = AOEColor; //
+      ctx.lineWidth = 2.5;
+      
+      ctx.beginPath();
+
+      ctx.arc( startX,
+              startY,
+              this.radius * ig.system.scale,
+              0, 
+              Math.PI * 2 );
+
+      ctx.stroke();
+
+      ctx.closePath();
+    },
+    
+    handleMovementTrace: function( res ) {
+      this.parent( res );
+      if( res.collision.x || res.collision.y ){
+        // this.kill();
+      }
+    },
+
+    check: function( other ) {
+      if(other.faction != this.faction){
+        other.receiveDamage( this.damage, this );
+      }
+      
+    },
+    kill: function(){
+      
+      this.parent();
+      // ig.game.spawnEntity(EntityDamageExplosion, this.pos.x, this.pos.y, 
+      //   {callBack:this.onDeath} );
+    },
+    
+  });   //end of bullet
+
+
+
   
   EntityDeathExplosion = ig.Entity.extend({
     lifetime: 1,

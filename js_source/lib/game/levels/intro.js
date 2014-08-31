@@ -5,7 +5,22 @@ ig.module( 'game.levels.intro' )
   'game.entities.hud' )
 .defines(function(){
 LevelIntro=/*JSON[*/{
-  "entities":[{"type":"EntityTower","x":48,"y":48,"settings":{"towerType":0}}, 
+  "entities":[{"type":"EntityTower","x":48,"y":48,"settings":{"faction":10,
+                                                              "towerType":0}}, 
+              {"type":"EntityTower","x":360,"y":120,"settings":{"faction":20,
+                                                              "towerType":0}}, 
+              {"type":"EntityTower","x":72,"y":48,"settings":{"faction":10,
+                                                              "towerType":1}}, 
+              {"type":"EntityTower","x":336,"y":120,"settings":{"faction":20,
+                                                              "towerType":1}}, 
+              {"type":"EntityTower","x":72,"y":48,"settings":{"faction":10,
+                                                              "towerType":1}},
+              {"type":"EntityTower","x":24,"y":48,"settings":{"faction":10,
+                                                              "towerType":6}},
+              {"type":"EntityTower","x":48,"y":24,"settings":{"faction":10,
+                                                              "towerType":7}},
+              {"type":"EntityTower","x":24,"y":24,"settings":{"faction":10,
+                                                              "towerType":7}},
         {"type":"EntityCursor","x":5,"y":5},
         {"type":"EntityHud","x":5,"y":5}
         ],
@@ -27,26 +42,34 @@ LevelIntro=/*JSON[*/{
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ]}]}/*]JSON*/;
 LevelIntroResources=[new ig.Image('media/null_tileset.png')];
-LevelStats={crystal:0,fuel:200,crew:100,hull:100};
+LevelStats={crystal:100,fuel:2000,crew:100,hull:100,
+            maxCrystal:2000,maxFuel:2000, maxCrew:100
+              
+              };
 LevelUpdate = function(){
   var allTowers = ig.game.towerList;
-  var factionArray =[];
-  for(var i=0;i<allTowers.length,i++){
+  var factionArray = [];
+  for(var i=0;i<allTowers.length;i++){
     if(factionArray.indexOf(allTowers[i].faction) >= 0){
       //its in there
+      
     }else{
       //add this faction
       factionArray.push(allTowers[i].faction);
+      // console.log("lose!",factionArray);
     }
   }
-  if(factionArray.length > 1){
-    //you win!
-    console.log("win!");
-  }else if(factionArray.indexOf( 10 ) == -1){
+  if(factionArray.indexOf( 10 ) == -1){
     //you have no towers, lose!
-    console.log("lose!");
+    // console.log("lose!",factionArray);
+    ig.game.stats.deathText = "Your Home Tower has been destroyed! \n";
+    ig.game.gameOver();
+  }else if(factionArray.length == 1){
+    // console.log("win");
+    ig.game.stats.deathText = "You won by destroying the Enemy Tower! \n";
+    ig.game.gameOver();
   }
 }
 
 }); //end of whole file
-// // //
+// // 
