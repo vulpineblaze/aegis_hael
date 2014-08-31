@@ -2,7 +2,8 @@ ig.module(
   'game.entities.guard'
 )
 .requires(
-  'impact.entity'
+  'impact.entity',
+  'game.imageblender'
 )
 .defines(function(){
   EntityGuard = ig.Entity.extend({
@@ -20,10 +21,16 @@ ig.module(
     spawnerDelay:1,
     
     type: ig.Entity.TYPE.B,
-    checkAgainst: ig.Entity.TYPE.A,
+    checkAgainst: ig.Entity.TYPE.BOTH,
     collides: ig.Entity.COLLIDES.PASSIVE,
 
     faction:0,
+
+    targetObj: 0,
+
+    fireDistance: 30,
+    fireSpeed:6,
+    fireTimer:null,
     
     
     
@@ -74,12 +81,19 @@ ig.module(
       }else{
         var xdir = 1;
       }
-      this.vel.x += (xdir*this.speed - this.vel.x)*0.9;
-      this.vel.y += (this.speed - this.vel.y)*0.9;
+      
       // this.vel.x = this.speed * xdir;
       // this.vel.x = (xdir*this.speed,3+Math.pow(this.vel.x))/4;
       // this.vel.y = (this.speed,3+Math.pow(this.vel.y))/4;
       this.currentAnim.flip.x = this.flip;
+
+      if(this.targetObj){
+        this.hasTargetWillRun();
+      }else{
+        this.targetAndRunTowards();
+        this.vel.x += (xdir*this.speed - this.vel.x)*0.9;
+        this.vel.y += (this.speed - this.vel.y)*0.9;
+      }
       this.parent();
     },
     
@@ -93,7 +107,9 @@ ig.module(
     },
     
     check: function( other ) {
-      other.receiveDamage( 6, this );
+      if(other.faction != this.faction){
+        other.receiveDamage( 6, this );
+      }
 
       // this.vel.x += (this.pos.x - other.pos.x)*0.2;
       // this.vel.y += (this.pos.y - other.pos.y)*0.2;
@@ -113,9 +129,60 @@ ig.module(
       this.parent();
       ig.game.spawnEntity(EntityDamageExplosion, this.pos.x, this.pos.y, {colorOffset: 1,checkAgainst: ig.Entity.TYPE.A});
       ig.game.stats.kills++;
-    }
+    },
+
+    targetAndRunTowards: function(){
+      var targetTowerList = ig.game.getEntitiesByType( EntityTower );
+      var targetGuardList = ig.game.getEntitiesByType( EntityGuard );
+      var goodTarget = null;
+      for(var index = 0;index<targetTowerList.length;index++){
+        if(goodTarget){break;}
+        var possibleTarget = targetTowerList[index];
+        if(possibleTarget.faction != this.faction && this.distanceTo( possibleTarget ) < this.fireDistance){
+          goodTarget = possibleTarget;
+        }
+      }
+
+      for(var index = 0;index<targetGuardList.length;index++){
+        if(goodTarget){break;}
+        var possibleTarget = targetGuardList[index];
+        if(possibleTarget.faction != this.faction && this.distanceTo( possibleTarget ) < this.fireDistance){
+          this.goodTarget = possibleTarget;
+        }
+
+
+      }
+
+      for(var index = 0;index<targetTowerList.length;index++){
+        if(goodTarget){break;}
+        var possibleTarget = targetTowerList[index];
+        if(possibleTarget.faction != this.faction){
+          goodTarget = possibleTarget;
+        }
+      }
+
+      if(goodTarget){
+        this.targetObj = goodTarget;
+        this.hasTargetWillRun();
+      }
+      
+      
+    },//endof targetandruntowards
+
+    hasTargetWillRun: function(){
+      var targetAngle = this.angleTo( this.targetObj );
+        
+      var angx = Math.cos(targetAngle);
+      var angy = Math.sin(targetAngle);
+
+      this.pos.x += angx*(this.speed/20);
+      this.pos.y += angy*(this.speed/20);
+
+
+    },
     
-  });
+  }); //endof guard
+
 
   EntityTurret = ig.Entity.extend({
     size: {x: 29, y: 37},
@@ -225,11 +292,13 @@ ig.module(
   
   
   EntityMouseBullet = ig.Entity.extend({
-    size: {x: 5, y: 3},
-    animSheet: new ig.AnimationSheet( 'media/bullet.png', 5, 3 ),
+    // size: {x: 5, y: 3},
+    animSheet: new ig.AnimationSheet( 'media/big_bullet.png#FF0000', 24, 24 ),
+    scale: 0.1,
+
     maxVel: {x: 0, y: 0},
     type: ig.Entity.TYPE.NONE,
-    checkAgainst: ig.Entity.TYPE.B,
+    checkAgainst: ig.Entity.TYPE.BOTH,
     collides: ig.Entity.COLLIDES.PASSIVE,
     
     desiredVel: 300,
@@ -266,7 +335,17 @@ ig.module(
       this.addAnim( 'idle', 0.2, [0] );
     },
     
-    
+    draw: function () {
+      var ctx = ig.system.context;
+      ctx.save();
+      ctx.translate( ig.system.getDrawPos( this.pos.x - this.offset.x - ig.game.screen.x ),
+        ig.system.getDrawPos( this.pos.y - this.offset.y - ig.game.screen.y ) );
+      ctx.scale( this.scale, this.scale );
+      this.currentAnim.draw( 0, 0 );
+      ctx.restore();
+
+      this.parent();
+    },
     
     handleMovementTrace: function( res ) {
       this.parent( res );

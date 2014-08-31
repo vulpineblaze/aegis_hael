@@ -157,7 +157,7 @@ ig.module(
           var newGuard = ig.game.spawnEntity( EntityGuard, 
                                 this.pos.x+18, 
                                 this.pos.y+48,
-                                {faction:999}
+                                {faction:this.faction}
                                 ); 
 
           console.log(newGuard,"guard");
@@ -218,7 +218,20 @@ ig.module(
       // ig.game.respawnPosition = this.startPosition;
       ig.game.spawnEntity(EntityDeathExplosion, this.pos.x, this.pos.y, 
         {callBack:this.onDeath} );
-      this.highlight.kill();
+      if(this.highlight){
+        this.highlight.kill();
+      }
+      if(true | this.towerType == 0){
+        var allTowers = ig.game.towerList;
+        var index = allTowers.indexOf(this);
+        if (index > -1) {
+          ig.game.towerList.splice(index, 1);
+        }else{
+          console.log("tower missing from allTowers"); //eror
+        }
+
+      }
+      
     },
     
     // makeInvincible: function(){
