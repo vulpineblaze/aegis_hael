@@ -13,6 +13,7 @@ ig.module(
     animSheet: new ig.AnimationSheet( 'media/null_towers.png', 24, 24 ),
 
     size: {x: 24, y:24},
+    centerPos: {x:0,y:0},
     flip: false,
     drag:false,
 
@@ -21,22 +22,28 @@ ig.module(
     accelGround: 400,
     accelAir: 200,
     jump: 200,
-    shootSpeed: 6, //larger numbers increase firing speed// in hz //
-    shootNext: 0,
+
     animSpeed: 0.0009,
 
     fireDistance: 80,
-    fireSpeed:6,
-    fireTimer:null,
+    fireSpeed:0.5,  //larger numbers increase firing speed// in hz
+    fireTimer: new ig.Timer(1/this.fireSpeed), 
 
-    // shootSpeed: 6, //larger numbers increase firing speed// in hz
-    // shootNext: 0,
+    adjTowers:[],
     
     mouseRel: {x:0,y:0},
     
-    health: 20,
+    health: 1,
     maxHealth: 20,
-    regen:0.05,
+
+    energy: 1,
+    maxEnergy: 20,
+    reqEnergyToShoot: 5, //
+
+    regen:1,
+    healRate:0.5,
+
+    resourceBonus:0,
     
     highlight:0,
     profile: 0,
@@ -52,7 +59,6 @@ ig.module(
 
     faction:0,
 
-    guardSpawnTimer:null, 
     
     invincible: true,
     invincibleDelay: 2,
@@ -68,8 +74,9 @@ ig.module(
       
       //this.setupAnimation(this.weapon);
       // this.startPosition = {x:x,y:y};
+
       this.invincibleTimer = new ig.Timer();
-      this.fireTimer = new ig.Timer(0);
+      // this.fireTimer = new ig.Timer(0);
       // this.invincibleTimer = new ig.Timer();
       if(settings.towerType){
         this.towerType = settings.towerType;
@@ -83,11 +90,51 @@ ig.module(
       this.addAnim( 'idle', 1, [this.towerType] );
 
       if(this.towerType == 0){
-        this.guardSpawnTimer = new ig.Timer();
-        console.log(this.guardSpawnTimer.delta(),"timer test");
+        this.reqEnergyToShoot = 0;
+      }
+      if(this.towerType == 0 | this.towerType == 9){
+        var mapX = ig.game.collisionMap.width * ig.game.collisionMap.tilesize;
+        var mapY = ig.game.collisionMap.height * ig.game.collisionMap.tilesize;
+        var hypotenuse = Math.sqrt( Math.pow(mapX,2) + Math.pow(mapY,2) );
+        // this.fireDistance = hypotenuse +1;
+        this.fireDistance = 1000;
+        // this.fireTimer = new ig.Timer(1/this.fireSpeed);
+        // console.log(this.guardSpawnTimer.delta(),"timer test"); //
+      }else if(this.towerType == 2){
+        this.fireSpeed = 0.5;
+        this.fireDistance = 60;
+      }else if(this.towerType == 1){
+        this.fireSpeed = 6;
+      }else if(this.towerType == 3){
+        this.fireSpeed = 0.5;
+        this.fireDistance = 160;
+        this.maxEnergy = 51;
+        this.reqEnergyToShoot = 50;
+      }else if(this.towerType == 4){
+        this.fireSpeed = 1;
+        // this.fireDistance = 60;
+        // this.fireDistance = 160;
+      }else if(this.towerType == 5){
+        this.fireSpeed = 1;
+      }else if(this.towerType == 6 ){
+        this.fireSpeed = 1;
+        this.resourceBonus = 3;
+      }else if( this.towerType == 7 ){
+        this.fireSpeed = 1;
+        this.resourceBonus = 8;
+      }else if(this.towerType == 8){
+        this.health = 50;
+        this.maxHealth = 50;
       }
 
       this.parent( x, y, settings );
+
+
+      this.centerPos.x = this.pos.x+this.size.x/2;
+      this.centerPos.y = this.pos.y+this.size.y/2;
+
+      this.findAdjTowersInit();
+
       // this.addAnim( 'run', this.animSpeed, [1,2,3,4] );
       // this.addAnim( 'jump', 1, [6] );
       // this.addAnim( 'fall', 1, [0] );
@@ -131,16 +178,16 @@ ig.module(
       if (ig.input.pressed('lbtn') && this.inFocus()) {
             // ig.log('clicked');
             // this.highlight = 
-            if (this.highlight==0 && ig.game.highlighted != this){
-              ig.game.highlighted = this;
-              this.highlight = ig.game.spawnEntity( EntityHighlight, 
-                                this.pos.x, 
-                                this.pos.y, 
-                                {flip:this.flip, angle:0.0, par:this} 
-                                ); //Nothing to special here, just make sure you pass the angle we calculated in
+        //     if (this.highlight==0 && ig.game.highlighted != this){
+        //       ig.game.highlighted = this;
+        //       this.highlight = ig.game.spawnEntity( EntityHighlight, 
+        //                         this.pos.x, 
+        //                         this.pos.y, 
+        //                         {flip:this.flip, angle:0.0, par:this} 
+        //                         ); //Nothing to special here, just make sure you pass the angle we calculated in
               
-          this.highlight.zIndex=this.zIndex+2;
-        }
+        //   this.highlight.zIndex=this.zIndex+2;
+        // }
         }else{
           // if (!(this.highlight==0)){
           //  this.highlight.kill();
@@ -152,53 +199,100 @@ ig.module(
           this.highlight = 0;
         }
       
-      if(this.towerType == 0){
-        if(this.guardSpawnTimer.delta() > 3){
+      if(this.towerType < 6 && this.towerType >= 0){
+        //needs to shoot
+        this.targetAndShoot();
+      } else if (this.towerType == 6){
+        if( this.fireTimer.delta() > 0 ) { //Basic shoot command
+          this.fireTimer = new ig.Timer(1/this.fireSpeed );
+          ig.game.stats.crystal += this.resourceBonus;
+        }
+      }else if (this.towerType == 7){
+        if( this.fireTimer.delta() > 0 ) { //Basic shoot command
+          this.fireTimer = new ig.Timer(1/this.fireSpeed );
+          ig.game.stats.fuel += this.resourceBonus;
+        }
+      }else if(this.towerType == 9){
+        if(this.fireTimer.delta() > 0){
           var newGuard = ig.game.spawnEntity( EntityGuard, 
                                 this.pos.x+18, 
                                 this.pos.y+48,
                                 {faction:this.faction}
                                 ); 
 
-          console.log(newGuard,"guard");
-          this.guardSpawnTimer = new ig.Timer();
+          // console.log(newGuard,"guard");
+          this.fireTimer = new ig.Timer(1/this.fireSpeed);
         }
-      }else{
-        //needs to shoot
-        this.targetAndShoot();
-      } 
+      }
       // move!
+
+      this.transferAdjResources();
+
+      this.healThySelf();
+
       this.parent();
     },
     
     
     draw: function(){
-      // var r=this.planetColor[0],g=this.planetColor[1],b=this.planetColor[2];
-      // // console.log(r);
-      // var planetColor = "rgba("+r+","+g+","+b+",0.9)"; 
-      // var planetRadius = 24;
+
       var offset = 0, xOffset = 0; //  
 
       var ctx = ig.system.context;
 
-
       var tileSize = 24;
+
+      var fireBar = Math.abs(this.fireTimer.delta()/(1/this.fireSpeed));
+
+      if(fireBar < 0){
+        fireBar = 0;
+      }else if(fireBar > 1){
+        fireBar = 1;
+      }
       
 
-      var startX = ig.system.getDrawPos(this.pos.x - ig.game.screen.x + offset);
-      var startY = ig.system.getDrawPos(this.pos.y - ig.game.screen.y + offset);
-            
-      var endX = ig.system.getDrawPos(tileSize+this.pos.x -ig.game.screen.x + offset);
-      var endY = ig.system.getDrawPos(tileSize+this.pos.y-ig.game.screen.y + offset);
-
+      //grey box
       ctx.fillStyle = "rgba(155,155,155,0.9)";
       ctx.beginPath();
-
       ctx.rect( (this.pos.x - ig.game.screen.x) * ig.system.scale,
                 (this.pos.y - ig.game.screen.y)  * ig.system.scale,
                 tileSize * ig.system.scale, //
                 tileSize * ig.system.scale);
 
+      ctx.closePath();
+      ctx.fill();
+
+      //health bar
+      ctx.fillStyle = "rgb(255,0,0)";
+      ctx.beginPath();
+      ctx.rect(
+          (this.pos.x - ig.game.screen.x + 1) * ig.system.scale, 
+          (this.pos.y - ig.game.screen.y - 1) * ig.system.scale, 
+          ((this.size.x - 2) * (this.health / this.maxHealth)) * ig.system.scale, 
+          2 * ig.system.scale
+                );
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "rgb(190,0,240)";
+      ctx.beginPath();
+      ctx.rect(
+          (this.pos.x - ig.game.screen.x + 1) * ig.system.scale, 
+          (this.pos.y - ig.game.screen.y + this.size.y - 1) * ig.system.scale, 
+          ((this.size.x - 2) * (fireBar)) * ig.system.scale, 
+          2 * ig.system.scale
+                );
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "rgb(100,250,100)";
+      ctx.beginPath();
+      ctx.rect(
+          (this.pos.x - ig.game.screen.x + this.size.x - 2) * ig.system.scale, 
+          (this.pos.y - ig.game.screen.y + 1) * ig.system.scale, //
+          2 * ig.system.scale,
+          ((this.size.y - 2) * (this.energy/this.maxEnergy)) * ig.system.scale
+                );
       ctx.closePath();
       ctx.fill();
 
@@ -227,7 +321,11 @@ ig.module(
         if (index > -1) {
           ig.game.towerList.splice(index, 1);
         }else{
+<<<<<<< HEAD
           console.log("tower missing from allTowers"); //eror
+=======
+          // console.log("tower missing from allTowers"); //eror
+>>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
         }
 
       }
@@ -313,7 +411,7 @@ ig.module(
       // }
 
       if( targetObj && this.fireTimer.delta() > 0 ) { //Basic shoot command
-        this.fireTimer = new ig.Timer(1/this.shootSpeed);
+        
               
         
         // var mx = (ig.input.mouse.x + ig.game.screen.x); //Figures out the x coord of the mouse in the entire world
@@ -330,8 +428,8 @@ ig.module(
         var angx = Math.cos(targetAngle);
         var angy = Math.sin(targetAngle);
 
-        var tx = (this.pos.x+this.size.x/2)+angx*(this.size.x+3);
-        var ty = (this.pos.y+this.size.y/2)+angy*(this.size.y+3);
+        var tx = (this.centerPos.x)+angx*(this.size.x+3);
+        var ty = (this.centerPos.y)+angy*(this.size.y+3);
 
         // var tx = this.turret.pos.x+(this.turret.size.x-6)/2+(angx)*27;
         // var ty = this.turret.pos.y+(this.turret.size.y-4)/2+(angy)*27;
@@ -352,16 +450,140 @@ ig.module(
         //ig.log(  'test' ); // round before output
         //ig.log( 'angle', r );
         //r=r*1000;
-        ig.game.spawnEntity( EntityMouseBullet, 
-                              tx, 
-                              ty, 
-                              {angle:targetAngle} ); //Nothing to special here, just make sure you pass the angle we calculated in
+        if(this.energy >= this.reqEnergyToShoot){
+          this.energy -= this.reqEnergyToShoot;
+          this.fireTimer = new ig.Timer(1/this.fireSpeed );
+
+          if(this.towerType == 0 && this.faction != 10){
+            var newGuard = ig.game.spawnEntity( EntityGuard, 
+                                  this.pos.x+18, 
+                                  this.pos.y+48,
+                                  {faction:this.faction}
+                                  ); 
+          }else if(this.towerType == 1){
+            ig.game.spawnEntity( EntityMouseBullet, 
+                                tx, 
+                                ty, 
+                                {angle:targetAngle,
+                                  faction:this.faction,
+                                  lifetime:1} ); 
+          }else if(this.towerType == 2){
+            // console.log(this.pos.x,this.pos.y,this.centerPos.x, this.centerPos.y);
+            ig.game.spawnEntity( EntityAOECircle, 
+                                this.centerPos.x, 
+                                this.centerPos.y, 
+                                {faction:this.faction} ); 
+          }else if(this.towerType == 3){
+            ig.game.spawnEntity( EntityMouseBullet, 
+                                tx, 
+                                ty, 
+                                {angle:targetAngle,
+                                  faction:this.faction,
+                                  color:"#0000FF",
+                                  damage:30,
+                                  desiredVel:200,
+                                } ); 
+          }else if(this.towerType == 4){
+            for(var i =0;i<10;i++){
+              var spreadAngle = targetAngle + (ig.game.randomNumGen(-90,90) / 360); //degrees
+              // console.log(spreadAngle);
+              ig.game.spawnEntity( EntityMouseBullet, 
+                                tx, 
+                                ty, 
+                                {angle:spreadAngle,
+                                  faction:this.faction,
+                                  color:"#880099",
+                                  lifetime:0.3,
+                                  damage:0.1,
+                                  desiredVel:200,
+                                  animSheet:{sheet:'media/bullet.png', 
+                                              x:5, y:3},
+                                } ); 
+            }
+          }else if(this.towerType == 5){
+            // EntityLine
+            if(targetObj.line==null){
+              ig.game.spawnEntity( EntityLine ,
+                                    this.centerPos.x,
+                                    this.centerPos.y,
+                                    {target:targetObj}
+                                    );
+
+            }
+          }
+
+        }//endof reqtoshoot
+
+
+
       }else{
         //
       }
 
       
     },
+
+    findAdjTowersInit: function(){
+      var allTowerList = ig.game.getEntitiesByType( EntityTower );
+      var margins = 2;
+      for(var index=0;index<allTowerList.length;index++){
+        var possibleTower = allTowerList[index];
+        if(possibleTower.faction == this.faction){
+          if(Math.abs(possibleTower.pos.x - this.pos.x) < this.size.x+margins &&
+            Math.abs(possibleTower.pos.y - this.pos.y) < this.size.y+margins){
+            //friednly and adj
+            // console.log(possibleTower.pos);
+            this.adjTowers.push(possibleTower);
+            possibleTower.adjTowers.push(this);
+          }
+        }
+      }
+    },
+
+    transferAdjResources: function(){
+      var allTowerList = this.adjTowers;
+      if(allTowerList.length > 4){
+        // console.log(allTowerList);
+      }
+      for(var index=0;index<allTowerList.length;index++){
+        var possibleTower = allTowerList[index];
+        if(possibleTower.faction == this.faction){
+          if(Math.abs(possibleTower.pos.x - this.pos.x) < this.size.x+1 &&
+            Math.abs(possibleTower.pos.y - this.pos.y) < this.size.y+1){
+            //friednly and adj
+            // console.log(possibleTower.pos);
+            if(this.towerType == 0){
+              if(possibleTower.energy+1 < possibleTower.maxEnergy &&
+                ig.game.stats.fuel > this.regen
+                ){
+                possibleTower.energy += this.regen;
+                if(this.faction == 10){
+                  ig.game.stats.fuel -= this.regen;
+                }
+              }
+            }else{
+              if(possibleTower.energy+1 < possibleTower.maxEnergy &&
+                this.energy > this.regen
+                ){
+                possibleTower.energy += this.regen;
+                this.energy -= this.regen;
+              }
+            }
+            
+          }
+        }
+      }
+    },
+
+    healThySelf: function(){
+      if(this.health+1<this.maxHealth &&
+        this.energy > this.healRate*2 &&
+        ig.game.stats.crystal > this.healRate*2){
+        this.health += this.healRate;
+        this.energy -= this.healRate*2;
+        ig.game.stats.crystal > this.healRate*2;
+      }
+    }
     
     // setAsHomePlanet: function(){
     //   var homeHighlight = ig.game.spawnEntity( EntityHighlight, 
@@ -506,27 +728,41 @@ ig.module(
         start: {},
         finish: {},
         zIndex: 400,
+
+        targetObj:null,
+
+        lifetime: 1,
  
         init: function(x, y, settings) {
           this.parent(x,y,settings);
 
-          this.target.x = settings.target.x ;
-          this.target.y = settings.target.y ;
+          this.targetObj = settings.target ;
+
+          this.targetObj.line = this;
+
+          this.idleTimer = new ig.Timer();
 
         },
  
         update: function() {
           
-
+          if(this.targetObj==null){
+            this.kill();
+          }
+          if( this.lifetime && this.idleTimer.delta() > this.lifetime ) {
+            this.kill();
+          }
 
           this.parent();
+          this.target.x = this.targetObj.centerPos.x ;
+          this.target.y = this.targetObj.centerPos.y ;
         },
 
         draw: function() {
-          var guideColor = "rgba(196,0,245,0.5)";
-          var guideRadius = 10;
+          var guideColor = "rgba(155,155,245,0.3)";
+          var guideRadius = 5;
 
-          var offset = 18;
+          var offset = 0;
           var startX = ig.system.getDrawPos(this.pos.x - ig.game.screen.x + offset);
           var startY = ig.system.getDrawPos(this.pos.y - ig.game.screen.y + offset);
                 
@@ -536,7 +772,7 @@ ig.module(
           var ctx = ig.system.context;
                 
           ctx.strokeStyle = guideColor; //
-          ctx.lineWidth = 7.5;
+          ctx.lineWidth = 4.5;
           ctx.beginPath();
           ctx.moveTo(startX,startY);
           ctx.lineTo(endX,endY);

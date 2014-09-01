@@ -43,7 +43,8 @@ ig.module(
     lines: [],
 
     towerList: [],
-    towerBuild: 0,
+    towerBuild: -1,
+    towerCosts:[0,50,60,70,80,90,20,20,5,50],
 
     map: [],
     mapSize: 64,
@@ -98,6 +99,9 @@ ig.module(
       this.stats.crew = LevelStats.crew;
       this.stats.hull = LevelStats.hull;
       this.stats.crystal = LevelStats.crystal;
+      this.stats.maxFuel = LevelStats.maxFuel;
+      this.stats.maxCrew = LevelStats.maxCrew;
+      this.stats.maxCrystal = LevelStats.maxCrystal;
 
 
     },
@@ -150,16 +154,20 @@ ig.module(
       if(!(this.instructText == null)){if( (this.instructText == null) || this.instructText && player.accel.x > 0)
       {this.instructText = null;}}
 
-      if( ig.input.state('left') ) {
+      // console.log(ig.input.mouse.x , this.screen.x,ig.input.mouse.x - this.screen.x);
+
+      var screenEdge = 5;
+      if( ig.input.state('left') | ig.input.mouse.x < screenEdge) {
         this.screen.x += -this.mapAccel;
-      }else if( ig.input.state('right') ) {
+      }else if( ig.input.state('right') | ig.input.mouse.x > ig.system.width - screenEdge) {
         this.screen.x += this.mapAccel;
-      }else if( ig.input.state('up') ) {
+      }else if( ig.input.state('up') | ig.input.mouse.y < screenEdge) {
         this.screen.y += -this.mapAccel;
-      }else if( ig.input.state('down') ) {
+      }else if( ig.input.state('down') | ig.input.mouse.y > ig.system.height - screenEdge) {
         this.screen.y += this.mapAccel;
       }
 
+      
       
       for(var i =1;i<10;i++){
         if(ig.input.state('num'+i)){
@@ -169,7 +177,15 @@ ig.module(
       }
 
       if(this.towerBuild > 0){
+        
+        if(this.stats.crystal < this.towerCosts[this.towerBuild]){
+          this.theCursor.cantAfford = true;
+        }else if(this.theCursor.cantAfford){
+          this.theCursor.cantAfford = false;
+        }
+
         this.checktowerPlacement();
+
         switch (this.towerBuild) {
           case 1:
             this.theCursor.currentAnim = this.theCursor.anims.first;break;
@@ -197,7 +213,17 @@ ig.module(
         this.theCursor.currentAnim = this.theCursor.anims.idle;
       }
 
+      if(this.stats.fuel > this.stats.maxFuel){
+        this.stats.fuel = this.stats.maxFuel;
+      }
+      if(this.stats.crystal > this.stats.maxCrystal){
+        this.stats.crystal = this.stats.maxCrystal;
+      }
+      if(this.stats.crew > this.stats.maxCrew){
+        this.stats.crew = this.stats.maxCrew;
+      }
 
+      this.checkForScreenOutsideMap();
 
       this.parent();
       
@@ -279,18 +305,22 @@ ig.module(
       //   // this.currentAnim = this.anims.idle;
       // }
       if(ig.input.pressed('lbtn')){
-        if( !this.theCursor.isTouching ){
+        if( !this.theCursor.isTouching && !this.theCursor.cantAfford){
           var towerX = Math.floor(this.theCursor.pos.x/24);
           var towerY = Math.floor(this.theCursor.pos.y/24);
 
           // console.log(towerX,towerY);
-          if(towerY > 0 && towerX > 0){
-            var newTower = ig.game.spawnEntity( EntityTower, 
+          if(towerY > 0 && towerX > 0 ){
+            if(this.stats.crystal > this.towerCosts[this.towerBuild]){
+              this.stats.crystal -= this.towerCosts[this.towerBuild];
+              var newTower = ig.game.spawnEntity( EntityTower, 
                                 towerX*24, 
                                 towerY*24,
                                 {towerType:this.towerBuild,
                                   faction:10}
                                 ); 
+            }
+            
 
           }
           
@@ -299,7 +329,7 @@ ig.module(
           //
         }
 
-        this.towerBuild = 0;
+        this.towerBuild = -1;
       }
       
     },
@@ -474,33 +504,33 @@ ig.module(
   //     return (smallest + Math.floor(Math.random()*largest-smallest+1));
   //   },
 
-  //   checkForScreenOutsideMap: function(){
-  //     //ig.system.width , height
-  //     //ig.game.collisionMap.width, height
-  //     //this.screen.x,y
-  //     var mapX = ig.game.collisionMap.width * 24;
-  //     var mapY = ig.game.collisionMap.height * 24;
+    checkForScreenOutsideMap: function(){
+      //ig.system.width , height
+      //ig.game.collisionMap.width, height
+      //this.screen.x,y
+      var mapX = ig.game.collisionMap.width * 24;
+      var mapY = ig.game.collisionMap.height * 24;
 
-  //     // console.log(this.screen.x,
-  //     //             this.screen.y,
-  //     //             mapX,
-  //     //             mapY,
-  //     //             ig.system.width,
-  //     //             ig.system.height);
+      // console.log(this.screen.x,
+      //             this.screen.y,
+      //             mapX,
+      //             mapY,
+      //             ig.system.width,
+      //             ig.system.height);
 
-  //     if(this.screen.x + ig.system.width > mapX){
-  //       this.screen.x = mapX - ig.system.width;
-  //     }else if(this.screen.x < 0){
-  //       this.screen.x = 0;
-  //     }
+      if(this.screen.x + ig.system.width > mapX){
+        this.screen.x = mapX - ig.system.width;
+      }else if(this.screen.x < 0){
+        this.screen.x = 0;
+      }
 
-  //     if(this.screen.y + ig.system.height > mapY){
-  //       this.screen.y = mapY - ig.system.height;
-  //     }else if(this.screen.y < 0){
-  //       this.screen.y = 0;
-  //     }
+      if(this.screen.y + ig.system.height > mapY){
+        this.screen.y = mapY - ig.system.height;
+      }else if(this.screen.y < 0){
+        this.screen.y = 0;
+      }
 
-  //   } //end cehck for screen bounds func
+    } //end cehck for screen bounds func
     
   }); //end game enitity thing
   

@@ -23,6 +23,7 @@ EntityCursor = ig.Entity.extend({
   cursorSpriteOffset: {x:-3,y:-3},
 
   isTouching: false,
+  isTouching: false,
 
 
   init: function( x, y, settings ) {
@@ -59,6 +60,17 @@ EntityCursor = ig.Entity.extend({
     {
     
     }
+    if(this.isTouching | this.cantAfford){
+      this.anims.first = new ig.Animation( this.redAnimSheet, 1, [1] );
+      this.anims.second = new ig.Animation( this.redAnimSheet, 1, [2] );
+      this.anims.third = new ig.Animation( this.redAnimSheet, 1, [3] );
+      this.anims.fourth = new ig.Animation( this.redAnimSheet, 1, [4] );
+      this.anims.fifth = new ig.Animation( this.redAnimSheet, 1, [5] );
+      this.anims.sixth = new ig.Animation( this.redAnimSheet, 1, [6] );
+      this.anims.seventh = new ig.Animation( this.redAnimSheet, 1, [7] );
+      this.anims.eigth = new ig.Animation( this.redAnimSheet, 1, [8] );
+      this.anims.ninth = new ig.Animation( this.redAnimSheet, 1, [9] );
+    }
     this.parent();
   },
 
@@ -76,15 +88,7 @@ EntityCursor = ig.Entity.extend({
   check: function(){
     // console.log("touching check");
     // var sheet1 = new ig.AnimationSheet( 'media/null_towers.png#FF0000', 24, 24  );
-    this.anims.first = new ig.Animation( this.redAnimSheet, 1, [1] );
-    this.anims.second = new ig.Animation( this.redAnimSheet, 1, [2] );
-    this.anims.third = new ig.Animation( this.redAnimSheet, 1, [3] );
-    this.anims.fourth = new ig.Animation( this.redAnimSheet, 1, [4] );
-    this.anims.fifth = new ig.Animation( this.redAnimSheet, 1, [5] );
-    this.anims.sixth = new ig.Animation( this.redAnimSheet, 1, [6] );
-    this.anims.seventh = new ig.Animation( this.redAnimSheet, 1, [7] );
-    this.anims.eigth = new ig.Animation( this.redAnimSheet, 1, [8] );
-    this.anims.ninth = new ig.Animation( this.redAnimSheet, 1, [9] );
+    
     this.isTouching = true;
   },
 
