@@ -36,11 +36,8 @@ ig.module(
     fireDistance: 30,
     fireSpeed:6,
     fireTimer:null,
-<<<<<<< HEAD
-=======
 
     line:null,
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
     
     
     
@@ -104,19 +101,11 @@ ig.module(
       this.currentAnim.flip.x = this.flip;
 
       if(this.targetObj){
-<<<<<<< HEAD
-        this.hasTargetWillRun();
-      }else{
-        this.targetAndRunTowards();
-        this.vel.x += (xdir*this.speed - this.vel.x)*0.9;
-        this.vel.y += (this.speed - this.vel.y)*0.9;
-=======
         this.hasTargetWillRun(modifiedSpeed);
       }else{
         this.targetAndRunTowards(modifiedSpeed);
         this.vel.x += (xdir*modifiedSpeed - this.vel.x)*0.9;
         this.vel.y += (modifiedSpeed - this.vel.y)*0.9;
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
       }
       this.parent();
 
@@ -160,11 +149,7 @@ ig.module(
       ig.game.stats.kills++;
     },
 
-<<<<<<< HEAD
-    targetAndRunTowards: function(){
-=======
     targetAndRunTowards: function(modifiedSpeed){
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
       var targetTowerList = ig.game.getEntitiesByType( EntityTower );
       var targetGuardList = ig.game.getEntitiesByType( EntityGuard );
       var goodTarget = null;
@@ -196,33 +181,20 @@ ig.module(
 
       if(goodTarget){
         this.targetObj = goodTarget;
-<<<<<<< HEAD
-        this.hasTargetWillRun();
-=======
         this.hasTargetWillRun(modifiedSpeed);
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
       }
       
       
     },//endof targetandruntowards
 
-<<<<<<< HEAD
-    hasTargetWillRun: function(){
-=======
     hasTargetWillRun: function(modifiedSpeed){
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
       var targetAngle = this.angleTo( this.targetObj );
         
       var angx = Math.cos(targetAngle);
       var angy = Math.sin(targetAngle);
 
-<<<<<<< HEAD
-      this.pos.x += angx*(this.speed/20);
-      this.pos.y += angy*(this.speed/20);
-=======
       this.pos.x += angx*(modifiedSpeed/20);
       this.pos.y += angy*(modifiedSpeed/20);
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
 
 
     },
@@ -339,15 +311,10 @@ ig.module(
   
   EntityMouseBullet = ig.Entity.extend({
     // size: {x: 5, y: 3},
-<<<<<<< HEAD
-    animSheet: new ig.AnimationSheet( 'media/big_bullet.png#FF0000', 24, 24 ),
-    scale: 0.1,
-=======
     animSheet: new ig.AnimationSheet( 'media/big_bullet.png#995522', 12, 12 ),
     scale: 0.1,
     offset:{x:0,y:0},
     faction:0,
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
 
     maxVel: {x: 0, y: 0},
     type: ig.Entity.TYPE.NONE,
@@ -421,19 +388,6 @@ ig.module(
       this.addAnim( 'idle', 0.2, [0] );
     },
     
-<<<<<<< HEAD
-    draw: function () {
-      var ctx = ig.system.context;
-      ctx.save();
-      ctx.translate( ig.system.getDrawPos( this.pos.x - this.offset.x - ig.game.screen.x ),
-        ig.system.getDrawPos( this.pos.y - this.offset.y - ig.game.screen.y ) );
-      ctx.scale( this.scale, this.scale );
-      this.currentAnim.draw( 0, 0 );
-      ctx.restore();
-
-      this.parent();
-    },
-=======
     update: function(){
       if( this.lifetime && this.idleTimer.delta() > this.lifetime ) {
         this.kill();
@@ -451,7 +405,6 @@ ig.module(
 
     //   this.parent();
     // },
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
     
     handleMovementTrace: function( res ) {
       this.parent( res );

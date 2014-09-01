@@ -321,11 +321,7 @@ ig.module(
         if (index > -1) {
           ig.game.towerList.splice(index, 1);
         }else{
-<<<<<<< HEAD
-          console.log("tower missing from allTowers"); //eror
-=======
           // console.log("tower missing from allTowers"); //eror
->>>>>>> 23532a63de834b1cdd9d94f927f7822e547a2118
         }
 
       }
