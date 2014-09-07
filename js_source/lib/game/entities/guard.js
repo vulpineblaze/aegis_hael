@@ -33,7 +33,7 @@ ig.module(
 
     targetObj: 0,
 
-    fireDistance: 30,
+    fireDistance: 80,
     fireSpeed:6,
     fireTimer:null,
 
@@ -42,6 +42,7 @@ ig.module(
     
     
     init: function( x, y, settings ) {
+      this.fireTimer = new ig.Timer();
       this.spawnerTimer = new ig.Timer();
       this.addAnim('walk', 0.01, [0,1,2,3,4,5]);
       this.parent( x, y, settings );
@@ -51,6 +52,7 @@ ig.module(
 
       this.vel.x = ig.game.randomNumGen(this.speed-2,this.speed+6);
       this.vel.y = ig.game.randomNumGen(this.speed-2,this.speed+6);
+
     },
 
     update: function() {
@@ -63,8 +65,6 @@ ig.module(
         //this.invincible = false;
         //this.currentAnim.alpha = 1;
         var dist = Math.floor((Math.random()*20)+10);
-        // ig.game.spawnEntity(EntityZombie, this.pos.x, this.pos.y+dist, 
-        //   {flip:!this.flip,spawnerDelay:this.spawnerDelay+1} );
         
         this.spawnerTimer=null;
 
@@ -72,14 +72,8 @@ ig.module(
       
       // near an edge? return!
       var x_coord = 4; //4 = 8-4
-      /*
-      if(this.flip)
-      {
-        x_coord = 4;
-      }else{
-        x_coord = this.size.x − 4;
-      }
-      */// end comment blocl from line 35
+
+
       if( ig.game.collisionMap.getTile(
         this.pos.x + x_coord,
         this.pos.y + this.size.y+1
@@ -102,6 +96,11 @@ ig.module(
 
       if(this.targetObj){
         this.hasTargetWillRun(modifiedSpeed);
+        if(this.fireTimer.delta() > 0.3){
+          // console.log(this.fireTimer.delta()); //
+          this.targetAndRunTowards(modifiedSpeed);
+          this.fireTimer = new ig.Timer();
+        }
       }else{
         this.targetAndRunTowards(modifiedSpeed);
         this.vel.x += (xdir*modifiedSpeed - this.vel.x)*0.9;
@@ -153,6 +152,7 @@ ig.module(
       var targetTowerList = ig.game.getEntitiesByType( EntityTower );
       var targetGuardList = ig.game.getEntitiesByType( EntityGuard );
       var goodTarget = null;
+
       for(var index = 0;index<targetTowerList.length;index++){
         if(goodTarget){break;}
         var possibleTarget = targetTowerList[index];
@@ -165,10 +165,8 @@ ig.module(
         if(goodTarget){break;}
         var possibleTarget = targetGuardList[index];
         if(possibleTarget.faction != this.faction && this.distanceTo( possibleTarget ) < this.fireDistance){
-          this.goodTarget = possibleTarget;
+          goodTarget = possibleTarget;
         }
-
-
       }
 
       for(var index = 0;index<targetTowerList.length;index++){
@@ -660,92 +658,3 @@ ig.module(
 
 });
 
-/*
-ig.module(
-  'game.entities.zombie'
-)
-.requires(
-  'impact.entity'
-)
-.defines(function(){
-  EntityZombie = ig.Entity.extend({
-    animSheet: new ig.AnimationSheet( 'media/zombie.png', 16, 16 ),
-    size: {x: 8, y:14},
-    offset: {x: 4, y: 2},
-    maxVel: {x: 100, y: 100},
-    flip: false,
-    lookAhead: 4,
-    
-    friction: {x: 150, y: 0},
-    speed: 14,
-    
-    type: ig.Entity.TYPE.B,
-    checkAgainst: ig.Entity.TYPE.A,
-    collides: ig.Entity.COLLIDES.PASSIVE,
-    
-    
-    
-    init: function( x, y, settings ) {
-      
-      this.addAnim('walk', .07, [0,1,2,3,4,5]);
-      this.parent( x, y, settings );
-    },
-
-    update: function() {
-      // near an edge? return!
-      var x_coord = 4; //4 = 8-4
-      /*
-      if(this.flip)
-      {
-        x_coord = 4;
-      }else{
-        x_coord = this.size.x − 4;
-      }
-      // end comment blocl from line 35
-      if( !ig.game.collisionMap.getTile(
-        this.pos.x + x_coord,
-        this.pos.y + this.size.y+1
-        )
-      ) {
-      this.flip = !this.flip;
-      }
-      //var xdir = this.flip ? −1 : 1;
-      if(this.flip)
-      {
-        var xdir = -1;
-      }else{
-        var xdir = 1;
-      }
-      this.vel.x = this.speed * xdir;
-      this.currentAnim.flip.x = this.flip;
-      this.parent();
-    },
-    
-    
-    handleMovementTrace: function( res ) {
-      this.parent( res );
-      // collision with a wall? return!
-      if( res.collision.x ) {
-        this.flip = !this.flip;
-      }
-    },
-    
-    check: function( other ) {
-    other.receiveDamage( 10, this );
-    },
-    
-    receiveDamage: function(value){
-    this.parent(value);
-    if(this.health > 0)
-      ig.game.spawnEntity(EntityDeathExplosion, this.pos.x, this.pos.y, {particles: 2, colorOffset: 1});
-    },
-    
-    kill: function(){
-      this.parent();
-      ig.game.spawnEntity(EntityDeathExplosion, this.pos.x, this.pos.y, {colorOffset: 1});
-      ig.game.stats.kills++;
-    }
-
-  });
-});
-*/

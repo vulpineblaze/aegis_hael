@@ -2,6 +2,7 @@ ig.module( 'game.levels.intro' )
 .requires( 'impact.image',
   'game.entities.tower',
   'game.entities.cursor',
+  'game.entities.dialogue',
   'game.entities.hud' )
 .defines(function(){
 LevelIntro=/*JSON[*/{
@@ -21,6 +22,19 @@ LevelIntro=/*JSON[*/{
                                                               "towerType":7}},
               {"type":"EntityTower","x":24,"y":24,"settings":{"faction":10,
                                                               "towerType":7}},
+                // guard tests
+              {"type":"EntityTower","x":72,"y":144,"settings":{"faction":10,
+                                                              "towerType":9}},
+              {"type":"EntityTower","x":72,"y":216,"settings":{"faction":10,
+                                                              "towerType":9}},
+              {"type":"EntityTower","x":72,"y":288,"settings":{"faction":10,
+                                                              "towerType":9}},
+              {"type":"EntityTower","x":336,"y":216,"settings":{"faction":20,
+                                                              "towerType":9}},
+              {"type":"EntityTower","x":336,"y":288,"settings":{"faction":20,
+                                                              "towerType":9}},
+              {"type":"EntityTower","x":336,"y":360,"settings":{"faction":20,
+                                                              "towerType":9}},
         {"type":"EntityCursor","x":5,"y":5},
         {"type":"EntityHud","x":5,"y":5}
         ],
@@ -42,8 +56,8 @@ LevelIntro=/*JSON[*/{
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ]}]}/*]JSON*/;
 LevelIntroResources=[new ig.Image('media/null_tileset.png')];
-LevelStats={crystal:100,fuel:2000,crew:100,hull:100,
-            maxCrystal:2000,maxFuel:2000, maxCrew:100
+LevelStats={crystal:300,fuel:2000,crew:100,hull:100,
+            maxCrystal:2000,maxFuel:2000, maxCrew:100, dialogueSequence:-99,
               
               };
 LevelUpdate = function(){
@@ -56,7 +70,7 @@ LevelUpdate = function(){
     }else{
       //add this faction
       factionArray.push(allTowers[i].faction);
-      // console.log("lose!",factionArray);
+      // console.log("lose!",factionArray); //
     }
   }
   if(factionArray.indexOf( 10 ) == -1){
@@ -69,6 +83,83 @@ LevelUpdate = function(){
     ig.game.stats.deathText = "You won by destroying the Enemy Tower! \n";
     ig.game.gameOver();
   }
+
+  // console.log(ig.game.levelExclusive.introComplete);
+
+  if(!ig.game.levelExclusive.introComplete && 
+      !ig.game.pauseText && 
+      !ig.game.pauseReturn &&
+      !ig.game.pauseBox){
+    // console.log(ig.game.levelExclusive.introComplete);
+    ig.game.levelExclusive.introComplete = false;
+    ig.game.pauseText = "Welcome to Aegis Hael!";
+    ig.game.pauseText += "\n\nPress 1 thru 9 to select the \ntower to want to build";
+    ig.game.pauseText += "\n\nDefeat the enemy by \ndestroying all its towers.";
+    ig.game.pauseText += "\n\nDo you understand?";
+    ig.game.pauseBox = ig.game.spawnEntity( EntityDialogue ,
+                                              0,0,
+                                    {showText:ig.game.pauseText,
+                                      hasOK:false,
+                                      hasYes:true,
+                                      hasNo:true}
+                                    );
+    ig.game.togglePause(); //pauses game
+  }else if(!ig.game.levelExclusive.introComplete && ig.game.pauseReturn == "Yes"){
+    LevelStats.dialogueSequence = -1;
+    ig.game.levelExclusive.introComplete = true;
+    ig.game.pauseReturn=null;
+    ig.game.pauseText=null;
+    
+  }else if(!ig.game.levelExclusive.introComplete && ig.game.pauseReturn == "No"){
+    ig.game.pauseReturn=null;
+    ig.game.pauseText=null;
+    // ig.game.pauseBox.kill();
+    ig.game.pauseBox = "placeholder";
+    window.setTimeout(function(){ig.game.pauseBox = null;},200);
+    
+  }else if(ig.game.levelExclusive.introComplete &&  
+    LevelStats.dialogueSequence == -1){
+    ig.game.pauseReturn=null;
+    LevelStats.dialogueSequence = 1;
+    ig.game.pauseText = "placeholder";
+    window.setTimeout(function(){ig.game.pauseText = null;},200);
+
+  }else if(LevelStats.dialogueSequence == 1 && !ig.game.pauseText){
+    LevelStats.dialogueSequence = 2;
+    
+    ig.game.pauseText = "Excellent!";
+    ig.game.pauseText += "\n\nPress 1 to create a gatling turret!";
+    ig.game.pauseBox = ig.game.spawnEntity( EntityDialogue ,
+                                              0,0,
+                                    {showText:ig.game.pauseText}
+                                    );
+    ig.game.togglePause(); //pauses game
+  }else if(LevelStats.dialogueSequence == 2 && ig.game.pauseReturn == "OK"){
+    //i dunno, we done?
+    LevelStats.dialogueSequence = 3;
+    ig.game.pauseReturn=null;
+    // ig.game.pauseText=null;
+    ig.game.pauseText = "placeholder";
+    window.setTimeout(function(){ig.game.pauseText = null;},200);
+  }else if(LevelStats.dialogueSequence == 3 && !ig.game.pauseText){
+    LevelStats.dialogueSequence = 4;
+    
+    ig.game.pauseText = "just another screen!";
+    ig.game.pauseText += "\n\nPress ok to make it stop!";
+    ig.game.pauseBox = ig.game.spawnEntity( EntityDialogue ,
+                                              0,0,
+                                    {showText:ig.game.pauseText}
+                                    );
+    ig.game.togglePause(); //pauses game
+  }else if(LevelStats.dialogueSequence == 4 && ig.game.pauseReturn == "OK"){
+    //i dunno, we done?
+    LevelStats.dialogueSequence = 5;
+    ig.game.pauseReturn=null;
+    // ig.game.pauseText=null;
+    ig.game.pauseText = "placeholder";
+    window.setTimeout(function(){ig.game.pauseText = null;},200);
+  }
+  // console.log(LevelStats.dialogueSequence);
 }
 
 }); //end of whole file

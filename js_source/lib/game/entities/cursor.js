@@ -7,10 +7,10 @@ ig.module(
 )
 .defines(function(){
 EntityCursor = ig.Entity.extend({
-  size: {x: 20, y: 20},
-  zIndex:800, //
-  //animSheet: new ig.AnimationSheet( 'media/hud.png', 320, 20 ),
-  // collides: ig.Entity.COLLIDES.NEVER,
+  size: {x: 15, y: 15},
+  offset:{x:3,y:3},
+  zIndex:800, 
+  
   checkAgainst: ig.Entity.TYPE.BOTH,
   type: ig.Entity.TYPE.A,
 
@@ -29,8 +29,8 @@ EntityCursor = ig.Entity.extend({
   init: function( x, y, settings ) {
     //this.addAnim( 'idle', 1, [0] ); //
     this.parent( x, y, settings );
-    this.pos.x=ig.input.mouse.x;
-    this.pos.y=ig.input.mouse.y;
+    this.pos.x=ig.input.mouse.x+this.offset.x;
+    this.pos.y=ig.input.mouse.y+this.offset.x;
     this.addAnim( 'idle', 1, [0] );
     this.addAnim( 'first', 1, [1] );
     this.addAnim( 'second', 1, [2] );

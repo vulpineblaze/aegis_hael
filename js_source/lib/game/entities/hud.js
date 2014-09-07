@@ -42,10 +42,10 @@ EntityHud = ig.Entity.extend({
         ctx.fillRect(0, 0, ig.system.width*3, 120);
 
         ig.game.font.draw( 
-            'Crystals: '+ ig.game.stats.crystal  
-            +'  |  Fuel: '+ ig.game.stats.fuel  
-            +'  |  Crew: '+ ig.game.stats.crew  
-            +'  |  Hull: '+ ig.game.stats.hull  
+            'Crystals: '+ Math.round(ig.game.stats.crystal)  
+            +'  |  Fuel: '+ Math.round(ig.game.stats.fuel)  
+            +'  |  Crew: '+ Math.round(ig.game.stats.crew)  
+            // +'  |  Hull: '+ Math.round(ig.game.stats.hull)  
             +'', //useless piece of line segment to hold that comma
             offset, offset);
 

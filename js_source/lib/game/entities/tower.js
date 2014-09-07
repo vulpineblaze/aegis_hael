@@ -10,9 +10,13 @@ ig.module(
 .defines(function(){
   EntityTower = ig.Entity.extend({
     zIndex:100, //
-    animSheet: new ig.AnimationSheet( 'media/null_towers.png', 24, 24 ),
+    animSheet: new ig.AnimationSheet( 'media/tower_turret_24x.png', 24, 24 ),
+    turret:0,
+    target:null,
 
-    size: {x: 24, y:24},
+    size: {x: 22, y:22},
+    width:24,
+    height:24,
     centerPos: {x:0,y:0},
     flip: false,
     drag:false,
@@ -33,15 +37,15 @@ ig.module(
     
     mouseRel: {x:0,y:0},
     
-    health: 1,
+    health: 2,
     maxHealth: 20,
 
     energy: 1,
     maxEnergy: 20,
-    reqEnergyToShoot: 5, //
+    reqEnergyToShoot: 5, 
 
     regen:1,
-    healRate:0.5,
+    healRate:0.1,
 
     resourceBonus:0,
     
@@ -59,6 +63,7 @@ ig.module(
 
     faction:0,
 
+    adjCounter:0,
     
     invincible: true,
     invincibleDelay: 2,
@@ -71,9 +76,7 @@ ig.module(
     
     init: function( x, y, settings ) {
     
-      
-      //this.setupAnimation(this.weapon);
-      // this.startPosition = {x:x,y:y};
+
 
       this.invincibleTimer = new ig.Timer();
       // this.fireTimer = new ig.Timer(0);
@@ -87,10 +90,11 @@ ig.module(
 
       this.faction = settings.faction;
 
-      this.addAnim( 'idle', 1, [this.towerType] );
+      this.addAnim( 'idle', 1, [1] );  //puts platform down
 
       if(this.towerType == 0){
         this.reqEnergyToShoot = 0;
+        this.regen = 5;
       }
       if(this.towerType == 0 | this.towerType == 9){
         var mapX = ig.game.collisionMap.width * ig.game.collisionMap.tilesize;
@@ -118,10 +122,10 @@ ig.module(
         this.fireSpeed = 1;
       }else if(this.towerType == 6 ){
         this.fireSpeed = 1;
-        this.resourceBonus = 3;
+        this.resourceBonus = 5;
       }else if( this.towerType == 7 ){
         this.fireSpeed = 1;
-        this.resourceBonus = 8;
+        this.resourceBonus = 11;
       }else if(this.towerType == 8){
         this.health = 50;
         this.maxHealth = 50;
@@ -166,8 +170,15 @@ ig.module(
         );
      },
 
+    
+
     update: function() {
       //creates turret
+      if (this.turret==0){
+        // console.log("made turret at",this.pos.x,this.pos.y);
+        this.spawnTurretOrDont();
+      }
+
       this.vel.x = this.vel.y = 0 ;
       if( this.invincibleTimer.delta() > this.invincibleDelay ) {
         this.invincible = false;
@@ -206,11 +217,13 @@ ig.module(
         if( this.fireTimer.delta() > 0 ) { //Basic shoot command
           this.fireTimer = new ig.Timer(1/this.fireSpeed );
           ig.game.stats.crystal += this.resourceBonus;
+          // this.energy -= 10;
         }
       }else if (this.towerType == 7){
         if( this.fireTimer.delta() > 0 ) { //Basic shoot command
           this.fireTimer = new ig.Timer(1/this.fireSpeed );
           ig.game.stats.fuel += this.resourceBonus;
+          // this.energy -= 1;
         }
       }else if(this.towerType == 9){
         if(this.fireTimer.delta() > 0){
@@ -222,13 +235,28 @@ ig.module(
 
           // console.log(newGuard,"guard");
           this.fireTimer = new ig.Timer(1/this.fireSpeed);
+          // this.energy -= this.maxEnergy-1;
         }
+      }
+
+      if(this.energy < this.maxEnergy){
+        // this.adjCounter++;
+        // if(this.adjCounter > 100){
+        //   this.findAdjTowersInit();
+        //   this.adjCounter = 0;
+        // }
+      }else if(this.energy > this.maxEnergy){
+        var diff = this.energy - this.maxEnergy;
+        ig.game.stats.fuel += diff;
+        this.energy = this.maxEnergy;
       }
       // move!
 
       this.transferAdjResources();
 
       this.healThySelf();
+
+      // this.energy = Math.round(this.energy); //
 
       this.parent();
     },
@@ -252,15 +280,15 @@ ig.module(
       
 
       //grey box
-      ctx.fillStyle = "rgba(155,155,155,0.9)";
-      ctx.beginPath();
-      ctx.rect( (this.pos.x - ig.game.screen.x) * ig.system.scale,
-                (this.pos.y - ig.game.screen.y)  * ig.system.scale,
-                tileSize * ig.system.scale, //
-                tileSize * ig.system.scale);
+      // ctx.fillStyle = "rgba(155,155,155,0.9)";
+      // ctx.beginPath();
+      // ctx.rect( (this.pos.x - ig.game.screen.x) * ig.system.scale,
+      //           (this.pos.y - ig.game.screen.y)  * ig.system.scale,
+      //           tileSize * ig.system.scale, //
+      //           tileSize * ig.system.scale);
 
-      ctx.closePath();
-      ctx.fill();
+      // ctx.closePath();
+      // ctx.fill();
 
       //health bar
       ctx.fillStyle = "rgb(255,0,0)";
@@ -268,7 +296,7 @@ ig.module(
       ctx.rect(
           (this.pos.x - ig.game.screen.x + 1) * ig.system.scale, 
           (this.pos.y - ig.game.screen.y - 1) * ig.system.scale, 
-          ((this.size.x - 2) * (this.health / this.maxHealth)) * ig.system.scale, 
+          ((this.width - 2) * (this.health / this.maxHealth)) * ig.system.scale, 
           2 * ig.system.scale
                 );
       ctx.closePath();
@@ -279,7 +307,7 @@ ig.module(
       ctx.rect(
           (this.pos.x - ig.game.screen.x + 1) * ig.system.scale, 
           (this.pos.y - ig.game.screen.y + this.size.y - 1) * ig.system.scale, 
-          ((this.size.x - 2) * (fireBar)) * ig.system.scale, 
+          ((this.width - 2) * (fireBar)) * ig.system.scale, 
           2 * ig.system.scale
                 );
       ctx.closePath();
@@ -291,7 +319,7 @@ ig.module(
           (this.pos.x - ig.game.screen.x + this.size.x - 2) * ig.system.scale, 
           (this.pos.y - ig.game.screen.y + 1) * ig.system.scale, //
           2 * ig.system.scale,
-          ((this.size.y - 2) * (this.energy/this.maxEnergy)) * ig.system.scale
+          ((this.height - 2) * (this.energy/this.maxEnergy)) * ig.system.scale
                 );
       ctx.closePath();
       ctx.fill();
@@ -307,7 +335,10 @@ ig.module(
 
     kill: function(){
       //this.deathSFX.play();
-      // this.turret.kill();
+      if(this.turret){
+        // this.turret.kill();
+        this.turret = null;
+      }
       this.parent();
       // ig.game.respawnPosition = this.startPosition;
       ig.game.spawnEntity(EntityDeathExplosion, this.pos.x, this.pos.y, 
@@ -359,6 +390,7 @@ ig.module(
     },
     
     onDeath: function(){
+      // this.turret.kill();
       ig.game.stats.deaths++;
       ig.game.lives--;
       if(ig.game.lives < 0){
@@ -405,6 +437,13 @@ ig.module(
       //               ; //Nothing to special here, just make sure you pass the angle we calculated in
 
       // }
+      if(targetObj){
+        if(!this.target | this.target != targetObj){
+          this.target = targetObj;
+        }
+      }else{
+        this.target = null;
+      }
 
       if( targetObj && this.fireTimer.delta() > 0 ) { //Basic shoot command
         
@@ -520,54 +559,157 @@ ig.module(
     },
 
     findAdjTowersInit: function(){
+      // var allTowerList = ig.game.getEntitiesByType( EntityTower );
+      // var margins = 7;
+      // for(var index=0;index<allTowerList.length;index++){
+      //   var possibleTower = allTowerList[index];
+      //   if(possibleTower.faction == this.faction){
+      //     // console.log(Math.abs(possibleTower.pos.x - this.pos.x),
+      //     //   Math.abs(possibleTower.pos.y - this.pos.y));
+      //     if(Math.abs(possibleTower.pos.x - this.pos.x) < this.size.x+margins &&
+      //       Math.abs(possibleTower.pos.y - this.pos.y) < this.size.y+margins){
+      //       //friednly and adj
+      //       // console.log(possibleTower.pos);
+      //       this.adjTowers.push(possibleTower);
+      //       possibleTower.adjTowers.push(this);
+      //     }
+      //   }
+      // }
+    },
+
+    transferAdjResources: function(){
       var allTowerList = ig.game.getEntitiesByType( EntityTower );
-      var margins = 2;
-      for(var index=0;index<allTowerList.length;index++){
-        var possibleTower = allTowerList[index];
-        if(possibleTower.faction == this.faction){
-          if(Math.abs(possibleTower.pos.x - this.pos.x) < this.size.x+margins &&
-            Math.abs(possibleTower.pos.y - this.pos.y) < this.size.y+margins){
-            //friednly and adj
-            // console.log(possibleTower.pos);
-            this.adjTowers.push(possibleTower);
-            possibleTower.adjTowers.push(this);
+      var margins = 3;
+      // if(allTowerList.length > 4){
+      //   // console.log(allTowerList);
+      // }
+      if(this.towerType == 0){
+        if(this.energy+1 < this.maxEnergy &&
+          ig.game.stats.fuel > this.regen
+          ){
+          this.energy += this.regen;
+          if(this.faction == 10){
+            ig.game.stats.fuel -= this.regen;
           }
+        }
+      }
+      for(var index=allTowerList.length-1;index>=0;index--){ 
+        var possibleTower = allTowerList[index];
+        // if(this.energy == this.maxEnergy){
+        //   break;
+        // }
+        if(possibleTower.faction == this.faction){
+          if(this.distanceTo( possibleTower ) < 34 &&
+            this.pos != possibleTower.pos ){
+          
+
+            
+            if(this.energy+1 < this.maxEnergy &&
+              possibleTower.energy > possibleTower.regen){
+              this.energy += possibleTower.regen;
+              possibleTower.energy -= possibleTower.regen;
+
+            }else if(possibleTower.energy+1 < possibleTower.maxEnergy &&
+              this.energy > this.regen
+              ){
+              possibleTower.energy += this.regen;
+              this.energy -= this.regen;
+            }
+            
+            // console.log(this.pos, possibleTower.pos);
+          }
+          // if(Math.abs(possibleTower.pos.x - this.pos.x) < this.width+margins &&
+          //   Math.abs(possibleTower.pos.y - this.pos.y) < this.height+margins){
+          //   //friednly and adj
+          //   // console.log(possibleTower.pos);
+          //   if(this.towerType == 0){
+          //     if(possibleTower.energy < possibleTower.maxEnergy &&
+          //       ig.game.stats.fuel > this.regen
+          //       ){
+          //       possibleTower.energy += this.regen;
+          //       if(this.faction == 10){
+          //         ig.game.stats.fuel -= this.regen;
+          //       }
+          //     }
+          //   }else{
+          //     if(possibleTower.energy < possibleTower.maxEnergy &&
+          //       this.energy > this.regen
+          //       ){
+          //       possibleTower.energy += this.regen;
+          //       this.energy -= this.regen;
+          //     }
+          //     if(this.energy < this.maxEnergy &&
+          //       possibleTower.energy > possibleTower.regen){
+          //       this.energy += possibleTower.regen;
+          //       possibleTower.energy -= possibleTower.regen;
+
+          //     }
+          //   }
+            
+          // }
         }
       }
     },
 
-    transferAdjResources: function(){
-      var allTowerList = this.adjTowers;
-      if(allTowerList.length > 4){
-        // console.log(allTowerList);
+    spawnTurretOrDont: function(){
+      var towerTurret = null;
+      var towerNoTurret=null;
+
+      var factionColor = null;
+      switch(this.faction){
+
+        case 10:
+          factionColor= "#bb3366"; break;
+        default:
+          factionColor = "#2277bb";break; //
       }
-      for(var index=0;index<allTowerList.length;index++){
-        var possibleTower = allTowerList[index];
-        if(possibleTower.faction == this.faction){
-          if(Math.abs(possibleTower.pos.x - this.pos.x) < this.size.x+1 &&
-            Math.abs(possibleTower.pos.y - this.pos.y) < this.size.y+1){
-            //friednly and adj
-            // console.log(possibleTower.pos);
-            if(this.towerType == 0){
-              if(possibleTower.energy+1 < possibleTower.maxEnergy &&
-                ig.game.stats.fuel > this.regen
-                ){
-                possibleTower.energy += this.regen;
-                if(this.faction == 10){
-                  ig.game.stats.fuel -= this.regen;
-                }
-              }
-            }else{
-              if(possibleTower.energy+1 < possibleTower.maxEnergy &&
-                this.energy > this.regen
-                ){
-                possibleTower.energy += this.regen;
-                this.energy -= this.regen;
-              }
-            }
-            
-          }
-        }
+
+      switch (this.towerType) {
+        case 0:
+          towerNoTurret = 20; break;
+        case 1:
+          towerTurret = 2; break;
+        case 2:
+          towerTurret = 4; break;
+        case 3:
+          towerTurret = 3; break;
+        case 4:
+          towerTurret = 6; break;
+        case 5:
+          towerTurret = 5; break;
+        case 6:
+          towerNoTurret = 3; break;
+        case 7:
+          towerNoTurret = 1; break;
+        case 8:
+          break;
+        case 9:
+          towerNoTurret = 2; break; 
+        default:
+          break;
+      }
+      if(towerTurret){
+        var r=0;
+        this.turret = ig.game.spawnEntity( EntityTurret, 
+                                            this.pos.x, 
+                                            this.pos.y, 
+                                            {flip:false, 
+                                              angle:r, 
+                                              par:this, 
+                                              towerAnim:towerTurret,
+                                              factionColor:factionColor} ); //Nothing to special here, just make sure you pass the angle we calculated in
+        this.turret.zIndex=this.zIndex+2;
+      }else{
+        this.turret = "no turret required by this tower";
+      }
+      if(towerNoTurret){
+        this.animSheet = new ig.AnimationSheet( 'media/Towers_Incomplete.png'+factionColor, 24, 24 );
+        this.anims.idle = new ig.Animation( this.animSheet, 1, [towerNoTurret] );
+        this.currentAnim = this.anims.idle;
+      }else{
+        this.animSheet = new ig.AnimationSheet( 'media/tower_turret_24x.png'+factionColor, 24, 24 );
+        this.anims.idle = new ig.Animation( this.animSheet, 1, [1] );
+        this.currentAnim = this.anims.idle;
       }
     },
 
@@ -577,7 +719,7 @@ ig.module(
         ig.game.stats.crystal > this.healRate*2){
         this.health += this.healRate;
         this.energy -= this.healRate*2;
-        ig.game.stats.crystal > this.healRate*2;
+        ig.game.stats.crystal -= this.healRate*2;
       }
     }
     
@@ -801,7 +943,95 @@ ig.module(
     });
 
 
+  EntityTurret = ig.Entity.extend({
+    size: {x: 24, y: 24},
+    animSheet: new ig.AnimationSheet( 'media/tower_turret_24x.png', 24,24 ),
+    factionColor:null,
+    //offset:{x:9,y:5},
+    shift:{x:0,y:0},
+    towerAnim:0,
+    //maxVel: {x: 200, y: 0},
+    type: ig.Entity.TYPE.NONE,
+    angle:0,
+    tx:0,
+    ty:0,
+    //checkAgainst: ig.Entity.TYPE.B,
+    //collides: ig.Entity.COLLIDES.PASSIVE,
+    
+    
+    
+    init: function( x, y, settings ) {
+    
+       
+      
+      this.parent( x , y, settings );
+      //this.vel.x = this.accel.x = velsetting;
+      if(settings.factionColor){
+        this.factionColor = settings.factionColor;
+        this.animSheet = new ig.AnimationSheet( 'media/tower_turret_24x.png'+this.factionColor, 24, 24 );
+        // this.anims.idle = new ig.Animation( this.animSheet, 1, [1] );
+        // this.currentAnim = this.anims.idle;
+      }
+      if(settings.towerAnim){
+        this.towerAnim = settings.towerAnim;
+      }
+      this.addAnim( 'idle', 0.2, [this.towerAnim] ); //
 
+      
+        
+
+
+    },
+    
+    handleMovementTrace: function( res ) {
+      this.parent( res );
+      
+    },
+    
+    update: function(){
+      
+      
+      this.pos.x = this.par.pos.x + this.shift.x;
+      this.pos.y = this.par.pos.y + this.shift.y;
+      //ig.log( 'tur x pos', this.pos.x,' tur par x',this.par.pos.x  );
+      
+      // var mx = (ig.input.mouse.x + ig.game.screen.x); //Figures out the x coord of the mouse in the entire world
+      // var my = (ig.input.mouse.y + ig.game.screen.y); //Figures out the y coord of the mouse in the entire world  
+
+      // var mx = this.pos.x;
+      // var my = this.pos.y + 50;
+
+      if(this.par.target){
+        this.tx = this.par.target.pos.x;
+        this.ty = this.par.target.pos.y;
+      }else{
+
+      }
+      
+      if(!this.par.turret){
+        this.kill();
+      }
+      var px =this.pos.x + this.size.x/2;
+      var py = this.pos.y + this.size.y/2;
+      
+      var r = Math.atan2(this.ty-py, this.tx-px);
+      
+      
+      //this.currentAnim = this.anims.run;
+      this.angle = r;
+      r = r + 3*Math.PI/2;
+      this.currentAnim.angle = r;
+      
+      
+      this.parent();
+    },
+
+    check: function( other ) {
+      //other.receiveDamage( 3, this );
+      //this.kill();
+    },
+    
+  });   //end of turret
 
 
 

@@ -7,6 +7,7 @@ ig.module(
   'impact.font',
   'impact.timer',
   'game.levels.intro',
+  'plugins.pause',
   //'game.levels.dorm1'
   
   'impact.debug.debug' // <- Add this
@@ -22,6 +23,8 @@ ig.module(
     statMatte: new ig.Image('media/stat-matte.png'),
     levelTimer: new ig.Timer(),
     levelExit: null,
+
+    burnTimer: new ig.Timer(),
 
     stats: { fuel: 0,
               crew: 0,
@@ -52,7 +55,10 @@ ig.module(
     showCursor: "0",
     theCursor: [],
 
+    pauseText:null,
+    pauseReturn:null,
 
+    levelExclusive:{},//dead variable to stuff level specific stuff into",
 
     mapAccel:2.1,
     
@@ -76,6 +82,8 @@ ig.module(
       ig.input.bind( ig.KEY.W, 'up' );
       ig.input.bind( ig.KEY.X, 'jump' );
       ig.input.bind( ig.KEY.C, 'shoot' );
+
+      ig.input.bind( ig.KEY.P, 'pause' );
 
       ig.input.bind(ig.KEY._0, 'num0');
       ig.input.bind(ig.KEY._1, 'num1');
@@ -106,7 +114,56 @@ ig.module(
 
     },
     
+    onPause: function() {
+      if(!this.pauseText){
+        this.pauseText = "You pressed PAUSE";
+        this.pauseText += "\n\nOnly the most cowardly species\nneed respite from battle.";
+        this.pauseText += "\n\nClick \"OK\" button to resume winning!";
+      }
+      if(!this.pauseBox){
+        this.pauseBox = ig.game.spawnEntity( EntityDialogue ,
+                                              0,0,
+                                    {showText:this.pauseText}
+                                    );
+      }
+
+      var allTowers = ig.game.getEntitiesByType( EntityTower );
+      var index;
+      for (index = 0; index < allTowers.length; ++index) {
+          // console.log(a[index]);
+          // this.towerList = allTowers;
+        if(allTowers[index].fireTimer){
+          allTowers[index].fireTimer.pause();
+        }
+      }
+
+      // this.fireTimer.pause();
+    },
+
+    onResume: function() {
+      if(this.pauseBox){
+        this.pauseBox.kill();
+        this.pauseBox = null;
+      }
+      
+      this.pauseText = null;
+
+      var allTowers = ig.game.getEntitiesByType( EntityTower );
+      var index;
+      for (index = 0; index < allTowers.length; ++index) {
+          // console.log(a[index]);
+          // this.towerList = allTowers;
+        if(allTowers[index].fireTimer){
+          allTowers[index].fireTimer.unpause();
+        }
+      }
+    }, 
+
     update: function(){
+
+      if ( ig.input.state('pause') && !this.pauseText && !this.pauseBox ) {
+        this.togglePause();
+      }
     
         // screen follows the player
       // var player = this.getEntitiesByType( EntityPlayer )[0];
@@ -221,6 +278,16 @@ ig.module(
       }
       if(this.stats.crew > this.stats.maxCrew){
         this.stats.crew = this.stats.maxCrew;
+      }
+
+      if(this.burnTimer.delta() > 2){
+        console.log("burn timer");
+        this.burnTimer = new ig.Timer();
+        var allTowers = ig.game.getEntitiesByType( EntityTower );
+        for(var index=0;index<allTowers.length;index++){
+          // allTowers[index].health -= 1;
+          allTowers[index].receiveDamage( 0.1, allTowers[index] );
+        }
       }
 
       this.checkForScreenOutsideMap();
